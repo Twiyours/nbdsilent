@@ -101,7 +101,7 @@ local function createGui()
 	local loadingImage = Instance.new("ImageLabel")
 	loadingImage.Size = UDim2.new(1, 0, 1, 0)
 	loadingImage.BackgroundTransparency = 1
-	loadingImage.Image = "rbxassetid://5012544693"
+	loadingImage.Image = "rbxassetid://17021132616"
 	loadingImage.Parent = loadingFrame
 
 	local spinTweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1)
