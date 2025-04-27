@@ -2,7 +2,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
-local VALIDATION_URL = "https://your-service-name.onrender.com/validate_key"
+local VALIDATION_URL = " http://base.0x32.me:6671/validate_key"
 
 local function createGui()
 	local screenGui = Instance.new("ScreenGui")
