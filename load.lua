@@ -129,43 +129,54 @@ local function createGui()
 end
 
 local function validateKey(key, username)
-	-- Manually create JSON string since HttpService:JSONEncode is unavailable
+	-- Manually create JSON string
 	local data = string.format('{"key":"%s","username":"%s"}', key, username)
 	local success, response = pcall(function()
-		return httppost(VALIDATION_URL, data, "application/json")
+		return request({
+			Url = VALIDATION_URL,
+			Method = "POST",
+			Headers = {
+				["Content-Type"] = "application/json"
+			},
+			Body = data
+		})
 	end)
 
 	if success and response then
+		-- Swift's request returns a table with Body, StatusCode, etc.
+		local responseBody = response.Body
+		print("Raw response: " .. responseBody) -- Debug
+
 		-- Manually parse JSON response
-		-- Expected response: {"success":true,"scriptUrl":"url"} or {"success":false,"message":"error"}
 		local successPattern = '"success":(%a+)'
 		local scriptUrlPattern = '"scriptUrl":"(.-)"'
 		local messagePattern = '"message":"(.-)"'
 
-		local successMatch = response:match(successPattern)
+		local successMatch = responseBody:match(successPattern)
 		if successMatch then
 			if successMatch == "true" then
-				local scriptUrl = response:match(scriptUrlPattern)
+				local scriptUrl = responseBody:match(scriptUrlPattern)
 				if scriptUrl then
 					return scriptUrl
 				else
 					return nil, "Failed to parse script URL"
 				end
 			else
-				local message = response:match(messagePattern) or "Invalid key or username"
+				local message = responseBody:match(messagePattern) or "Invalid key or username"
 				return nil, message
 			end
 		else
 			return nil, "Failed to parse response"
 		end
 	else
+		print("HTTP request failed: " .. tostring(response)) -- Debug
 		return nil, "Failed to contact server"
 	end
 end
 
 local function executeScript(scriptUrl)
 	local success, scriptContent = pcall(function()
-		return httpget(scriptUrl)
+		return game:HttpGet(scriptUrl)
 	end)
 
 	if success and scriptContent then
@@ -174,7 +185,7 @@ local function executeScript(scriptUrl)
 		end)
 		return execSuccess, result
 	else
-		return false, "Failed to fetch script"
+		return false, "Failed to fetch script: " .. tostring(scriptContent)
 	end
 end
 
