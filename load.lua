@@ -129,7 +129,6 @@ local function createGui()
 end
 
 local function validateKey(key, username)
-	-- Manually create JSON string
 	local data = string.format('{"key":"%s","username":"%s"}', key, username)
 	local success, response = pcall(function()
 		return request({
@@ -143,11 +142,7 @@ local function validateKey(key, username)
 	end)
 
 	if success and response then
-		-- Swift's request returns a table with Body, StatusCode, etc.
 		local responseBody = response.Body
-		print("Raw response: " .. responseBody) -- Debug
-
-		-- Manually parse JSON response
 		local successPattern = '"success":(%a+)'
 		local scriptUrlPattern = '"scriptUrl":"(.-)"'
 		local messagePattern = '"message":"(.-)"'
@@ -169,7 +164,6 @@ local function validateKey(key, username)
 			return nil, "Failed to parse response"
 		end
 	else
-		print("HTTP request failed: " .. tostring(response)) -- Debug
 		return nil, "Failed to contact server"
 	end
 end
@@ -185,7 +179,7 @@ local function executeScript(scriptUrl)
 		end)
 		return execSuccess, result
 	else
-		return false, "Failed to fetch script: " .. tostring(scriptContent)
+		return false, "Failed to fetch script"
 	end
 end
 
@@ -216,7 +210,7 @@ local function main()
 
 			local success, result = executeScript(scriptUrl)
 			if not success then
-				statusLabel.Text = "Error executing script: " .. tostring(result)
+				statusLabel.Text = "Error executing script"
 			end
 
 			wait(3)
@@ -224,7 +218,7 @@ local function main()
 		else
 			spinTween:Cancel()
 			loadingFrame.Visible = false
-			statusLabel.Text = errorMessage or "Invalid Key, Closing Gui"
+			statusLabel.Text = errorMessage or "Invalid Key, closing GUI"
 			wait(2)
 			screenGui:Destroy()
 		end
