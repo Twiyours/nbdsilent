@@ -1,8 +1,7 @@
-local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
-local VALIDATION_URL = " http://base.0x32.me:6671/validate_key"
+local VALIDATION_URL = "http://base.0x32.me:6671/validate_key"
 
 local function createGui()
 	local screenGui = Instance.new("ScreenGui")
@@ -130,39 +129,52 @@ local function createGui()
 end
 
 local function validateKey(key, username)
+	-- Manually create JSON string since HttpService:JSONEncode is unavailable
+	local data = string.format('{"key":"%s","username":"%s"}', key, username)
 	local success, response = pcall(function()
-		local data = {
-			key = key,
-			username = username
-		}
-		local encodedData = HttpService:JSONEncode(data)
-		return HttpService:PostAsync(VALIDATION_URL, encodedData, Enum.HttpContentType.ApplicationJson)
+		return httppost(VALIDATION_URL, data, "application/json")
 	end)
 
-	if success then
-		local decodedResponse = HttpService:JSONDecode(response)
-		if decodedResponse.success then
-			return decodedResponse.scriptUrl
+	if success and response then
+		-- Manually parse JSON response
+		-- Expected response: {"success":true,"scriptUrl":"url"} or {"success":false,"message":"error"}
+		local successPattern = '"success":(%a+)'
+		local scriptUrlPattern = '"scriptUrl":"(.-)"'
+		local messagePattern = '"message":"(.-)"'
+
+		local successMatch = response:match(successPattern)
+		if successMatch then
+			if successMatch == "true" then
+				local scriptUrl = response:match(scriptUrlPattern)
+				if scriptUrl then
+					return scriptUrl
+				else
+					return nil, "Failed to parse script URL"
+				end
+			else
+				local message = response:match(messagePattern) or "Invalid key or username"
+				return nil, message
+			end
 		else
-			return nil, decodedResponse.message or "Invalid key or username"
+			return nil, "Failed to parse response"
 		end
 	else
-		return nil, "Failed to contact server: " .. tostring(response)
+		return nil, "Failed to contact server"
 	end
 end
 
 local function executeScript(scriptUrl)
 	local success, scriptContent = pcall(function()
-		return HttpService:GetAsync(scriptUrl)
+		return httpget(scriptUrl)
 	end)
 
-	if success then
+	if success and scriptContent then
 		local execSuccess, result = pcall(function()
 			loadstring(scriptContent)()
 		end)
 		return execSuccess, result
 	else
-		return false, "Failed to fetch script: " .. tostring(scriptContent)
+		return false, "Failed to fetch script"
 	end
 end
 
@@ -201,7 +213,7 @@ local function main()
 		else
 			spinTween:Cancel()
 			loadingFrame.Visible = false
-			statusLabel.Text = "Invalid Key, Closing Gui"
+			statusLabel.Text = errorMessage or "Invalid Key, Closing Gui"
 			wait(2)
 			screenGui:Destroy()
 		end
