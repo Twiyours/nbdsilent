@@ -1,26 +1,7 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
-local function xorString(str, key)
-    local result = ""
-    for i = 1, #str do
-        local charCode = string.byte(str, i)
-        result = result .. string.char(bit32.bxor(charCode, key))
-    end
-    return result
-end
-
-local k = 42
-local p1 = "\032\017\017\016\007\047\047\010\001\019\028\064\058\062\025\028"
-local p2 = "\064\064\071\065"
-local p3 = "\022\001\012\009\004\001\017\028\013\028\031"
-
-local function getValidationUrl()
-    local part1 = xorString(p1, k)
-    local part2 = xorString(p2, k)
-    local part3 = xorString(p3, k)
-    return part1 .. ":" .. part2 .. "/" .. part3
-end
+local VALIDATION_URL = "http://base.0x32.me:6671/validate_key"
 
 local function createGui()
 	local screenGui = Instance.new("ScreenGui")
@@ -148,41 +129,49 @@ local function createGui()
 end
 
 local function validateKey(key, username)
-    local url = getValidationUrl() .. "?key=" .. key .. "&username=" .. username
-    local success, response = pcall(function()
-        return game:HttpGet(url)
-    end)
+	-- Manually create JSON string
+	local data = string.format('{"key":"%s","username":"%s"}', key, username)
+	local success, response = pcall(function()
+		return request({
+			Url = VALIDATION_URL,
+			Method = "POST",
+			Headers = {
+				["Content-Type"] = "application/json"
+			},
+			Body = data
+		})
+	end)
 
-    if success and response then
-        print("Raw response: [" .. response .. "]")
-        if response == "" then
-            return nil, "Empty response from server"
-        end
+	if success and response then
+		-- Swift's request returns a table with Body, StatusCode, etc.
+		local responseBody = response.Body
+		print("Raw response: " .. responseBody) -- Debug
 
-        local successPattern = '"success":(%a+)'
-        local scriptUrlPattern = '"scriptUrl":"(.-)"'
-        local messagePattern = '"message":"(.-)"'
+		-- Manually parse JSON response
+		local successPattern = '"success":(%a+)'
+		local scriptUrlPattern = '"scriptUrl":"(.-)"'
+		local messagePattern = '"message":"(.-)"'
 
-        local successMatch = response:match(successPattern)
-        if successMatch then
-            if successMatch == "true" then
-                local scriptUrl = response:match(scriptUrlPattern)
-                if scriptUrl then
-                    return scriptUrl
-                else
-                    return nil, "Failed to parse script URL"
-                end
-            else
-                local message = response:match(messagePattern) or "Invalid key or username"
-                return nil, message
-            end
-        else
-            return nil, "Failed to parse response: " .. response
-        end
-    else
-        print("HTTP request failed: " .. tostring(response))
-        return nil, "Failed to contact server"
-    end
+		local successMatch = responseBody:match(successPattern)
+		if successMatch then
+			if successMatch == "true" then
+				local scriptUrl = responseBody:match(scriptUrlPattern)
+				if scriptUrl then
+					return scriptUrl
+				else
+					return nil, "Failed to parse script URL"
+				end
+			else
+				local message = responseBody:match(messagePattern) or "Invalid key or username"
+				return nil, message
+			end
+		else
+			return nil, "Failed to parse response"
+		end
+	else
+		print("HTTP request failed: " .. tostring(response)) -- Debug
+		return nil, "Failed to contact server"
+	end
 end
 
 local function executeScript(scriptUrl)
